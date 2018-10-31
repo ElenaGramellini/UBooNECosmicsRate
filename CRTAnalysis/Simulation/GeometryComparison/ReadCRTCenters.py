@@ -118,6 +118,8 @@ count = 0
 
 
 
+dictionaryDataTxtCenterStrip = {}
+
 with open(fnameTxT, 'r') as sample:
     for i in xrange(1168):
         couple = next_n_lines(sample, 2)
@@ -149,24 +151,25 @@ with open(fnameTxT, 'r') as sample:
         if eFEB != oFEB:
             raise ValueError('The SiPMs are not on the same FEB')
     
+        # Calculate the strip number
+        numOSip = float(oSiPM)
+        numESip = float(eSiPM)
+        meanSiPM = (numOSip+numESip)/4.
+        strip = int(meanSiPM)
+        uniquekey = 100*int(eFEB)+strip
 
-        if oSiPM == "00" or eSiPM == "00":
-            print eFEB
-            count +=1
-
+        # approximate the center of the strip
         centerPosX = (eX + oX)/2.
         centerPosY = (eY + oY)/2.
         centerPosZ = (eZ + oZ)/2.
 
+        # move it in the right place
         if eFEB in bottom_Modules or eFEB in top_Modules:
             if oDirection == 0:
                 centerPosZ += (signDict[eFEB]*lengthsDict[eFEB]/2.)
             if oDirection == 1:
                 centerPosX += (signDict[eFEB]*lengthsDict[eFEB]/2.)
-
-
         if eFEB in ft_Modules or eFEB in pipe_Modules:
-            print eFEB, oDirection
             if oDirection == 1:
                 centerPosZ += (signDict[eFEB]*lengthsDict[eFEB]/2.)
             if oDirection == 0:
@@ -184,6 +187,13 @@ with open(fnameTxT, 'r') as sample:
 
         if eFEB in ft_Modules:
             hFT.Fill(centerPosZ,centerPosY)
+
+        center = [centerPosX, centerPosY, centerPosZ]
+        dictionaryDataTxtCenterStrip[uniquekey] = center
+        
+
+pprint.pprint( dictionaryDataTxtCenterStrip )
+
 
 
 hRedCheck.SetMarkerStyle(20)
