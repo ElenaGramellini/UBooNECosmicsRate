@@ -28,7 +28,8 @@ fileName = args.fileName
 ####################       Get TTree       ########################
 ###################################################################
 inFile   = TFile.Open(fileName)
-tTree    = inFile.Get("crt/trackdump")
+#tTree    = inFile.Get("crt/CRTMuonRate")
+tTree    = inFile.Get("crt/CRTMuonRate")
 
 hPEBottom  = TH1D("hPEBottom" , "hPEBottom"  , 3000, 0., 3000 )
 hPETop     = TH1D("hPETop"    , "hPETop"     , 3000, 0., 3000 )
