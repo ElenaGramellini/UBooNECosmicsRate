@@ -7,8 +7,11 @@ from array import array
 import pprint 
 import json
 import itertools
-
 from itertools import islice
+
+
+
+wantedFEB = "14"
 
 def next_n_lines(file_opened, N):
     return [x.strip() for x in islice(file_opened, N)]
@@ -29,6 +32,12 @@ hBottom   = TH2D("hBottom"   , "hBottom; Z; X" ,  125, -300., 1300, 125, -300., 
 hRedCheck = TH2D("hRedCheck" , "hBottom; Z; X" ,  125, -300., 1300, 125, -300., 500.)
 hPipe     = TH2D("hPipe"     , "hPipe;   Z; Y" ,  125, -300., 1300, 125, -300., 300.)
 hFT       = TH2D("hFT"       , "hFT;     Z; Y" ,  125, -300., 1300, 125, -300., 300.)
+
+
+hSimTop      = TH2D("hSimTop"      , "hSimTop;    Z; X" ,  125, -300., 1300, 125, -300., 500.)
+hSimBottom   = TH2D("hSimBottom"   , "hSimBottom; Z; X" ,  125, -300., 1300, 125, -300., 500.)
+hSimPipe     = TH2D("hSimPipe"     , "hSimPipe;   Z; Y" ,  125, -300., 1300, 125, -300., 300.)
+hSimFT       = TH2D("hSimFT"       , "hSimFT;     Z; Y" ,  125, -300., 1300, 125, -300., 300.)
 
 
 allMods = top_Modules+bottom_Modules+ft_Modules+pipe_Modules
@@ -114,10 +123,6 @@ Panel Map ==>
 '''
 
 fnameTxT = "CRTpositionsSiPM-V8.txt"
-count = 0
-
-
-
 dictionaryDataTxtCenterStrip = {}
 
 with open(fnameTxT, 'r') as sample:
@@ -192,21 +197,107 @@ with open(fnameTxT, 'r') as sample:
         dictionaryDataTxtCenterStrip[uniquekey] = center
         
 
-pprint.pprint( dictionaryDataTxtCenterStrip )
+
+
+fnameGdml = "gdml_CRT_B_bars_volumePlacement_file.gdml"
+dictionaryMCGdmlCenterStrip = {}
+
+with open(fnameGdml, 'r') as f:
+    for line in f.readlines():
+        if "position" not in line:
+            continue
+        else:
+            w  = line.split("\"")
+            FEB   = mod2feb[int((w[1].split("_"))[1])]
+            strip = int((w[1].split("_"))[3])
+            uniquekey = 100*FEB+strip 
+            centerPosX = float( w[5]) + 130.
+            centerPosY = float( w[7]) 
+            centerPosZ = float( w[9]) + 520.
+
+            center = [centerPosX, centerPosY, centerPosZ]
+            dictionaryMCGdmlCenterStrip[uniquekey] = center
+
+            if str(FEB) in bottom_Modules:
+                hSimBottom.Fill(centerPosZ,centerPosX)
+
+            if str(FEB) in top_Modules:
+                hSimTop.Fill(centerPosZ,centerPosX)
+
+            if str(FEB) in ft_Modules:
+                hSimFT.Fill(centerPosZ,centerPosY)
+
+            if str(FEB) in pipe_Modules:
+                hSimPipe.Fill(centerPosZ,centerPosY)
+
+inverted = 0
+dictionaryDifferences        = {}
+dictionaryDifferences_orig   = {}
+dictionaryDifferences_invert = {}
+for feb in mod2feb:
+    sqSum_orig   = 0
+    sqSum_invert = 0
+
+    for x in xrange(16):
+        key         = feb*100+x
+        invertedkey = feb*100 + (15-x)
+        dataPosition      = dictionaryDataTxtCenterStrip[key]
+        simPosition_orig    = dictionaryMCGdmlCenterStrip[key]
+        simPosition_invert  = dictionaryMCGdmlCenterStrip[invertedkey]
+
+        diff_orig    = [dataPosition[0] - simPosition_orig[0]  , dataPosition[1] - simPosition_orig[1]  , dataPosition[2] - simPosition_orig[2] ]
+        diff_invert  = [dataPosition[0] - simPosition_invert[0], dataPosition[1] - simPosition_invert[1], dataPosition[2] - simPosition_invert[2] ]
+
+        sqSum_orig   += ( diff_orig[0]*diff_orig[0]  + diff_orig[1]*diff_orig[1] + diff_orig[2]*diff_orig[2] )
+        sqSum_invert += ( diff_invert[0]*diff_invert[0]  + diff_invert[1]*diff_invert[1] + diff_invert[2]*diff_invert[2] )
+
+        dictionaryDifferences[key]   = diff_orig
+        dictionaryDifferences_orig[key]   = diff_orig
+        dictionaryDifferences_invert[key] = diff_invert
+
+#        if str(feb) == wantedFEB:
+#            print key, "%.2f" % diff[0] , "%.2f" % diff[1] , "%.2f" % diff[2]
+
+    if sqSum_invert < sqSum_orig:
+        inverted += 1
+        print "INVERTED", feb, inverted
+        for x in xrange(16):
+            key = feb*100 + (15-x)
+            dictionaryDifferences[key] = dictionaryDifferences_invert[key] 
+
+
+#print 
+#print len(dictionaryMCGdmlCenterStrip)
+pprint.pprint( dictionaryDifferences)   
 
 
 
 hRedCheck.SetMarkerStyle(20)
 hRedCheck.SetMarkerSize(2)
 hRedCheck.SetMarkerColor(kRed)
+
 hBottom.SetMarkerStyle(20)
 hTop.SetMarkerStyle(20)
 hPipe.SetMarkerStyle(20)
 hFT.SetMarkerStyle(20)
-hBottom.SetMarkerSize(2)
-hTop.SetMarkerSize(2)
-hPipe.SetMarkerSize(2)
-hFT.SetMarkerSize(2)
+hBottom.SetMarkerSize(1)
+hTop.SetMarkerSize(1)
+hPipe.SetMarkerSize(1)
+hFT.SetMarkerSize(1)
+
+
+hSimBottom.SetMarkerStyle(21)
+hSimTop.SetMarkerStyle(21)
+hSimPipe.SetMarkerStyle(21)
+hSimFT.SetMarkerStyle(21)
+hSimBottom.SetMarkerSize(1)
+hSimTop.SetMarkerSize(1)
+hSimPipe.SetMarkerSize(1)
+hSimFT.SetMarkerSize(1)
+hSimBottom.SetMarkerColor(kRed)
+hSimTop.SetMarkerColor(kRed)
+hSimPipe.SetMarkerColor(kRed)
+hSimFT.SetMarkerColor(kRed)
 
 
 fOut = TFile("CenterOut.root","recreate")
@@ -216,6 +307,12 @@ fOut.Add(hRedCheck)
 fOut.Add(hTop)
 fOut.Add(hPipe)
 fOut.Add(hFT)
+
+fOut.Add(hSimBottom)
+fOut.Add(hSimTop)
+fOut.Add(hSimPipe)
+fOut.Add(hSimFT)
+
 fOut.Write()
 fOut.Close()
 
