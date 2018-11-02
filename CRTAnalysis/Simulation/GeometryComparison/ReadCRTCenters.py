@@ -11,8 +11,6 @@ from itertools import islice
 
 
 
-wantedFEB = "14"
-
 def next_n_lines(file_opened, N):
     return [x.strip() for x in islice(file_opened, N)]
 
@@ -52,7 +50,7 @@ striplength = [ 346.0, 346.0, 346.0, 259.6, 259.6, 259.6, 259.6, 227.0, 227.0, 3
                 180.0, 180.0, 365.0, 365.0, 365.0, 365.0, 365.0, 365.0, 180.0, 180.0,                                 
                 365.0, 365.0, 365.0]
 
-
+'''
 mod2feb = [ 24,23,22,17,14,18,19,12,11,52,
             31,29,28,27,26,30,61,59,57,60,
             58,56,32,38,36,35,34,33,37,45,
@@ -61,6 +59,26 @@ mod2feb = [ 24,23,22,17,14,18,19,12,11,52,
             106,105,109,108,112,111,195,123,124,126,
             125,129,115,114,113,116,119,120,127,128,
             117,121,118]
+'''
+
+# Alternative
+mod2feb = [ 24,23,22,17,14,18,19,12,11,52,
+            31,29,28,27,26,30,61,59,57,60,
+            58,56,32,38,36,35,34,33,37,45,
+            44,43,42,41,40,39,55,54,53,51,
+            49,47,21,16,50,48,46,20,15,107,
+            106,105,109,108,112,111,195,123,124,125,
+            126,129,115,114,113,116,119,121,127,128,
+            117,120,118]
+
+
+
+print "=================================="
+print "WRONG mod2feb:    125 <-----> 126"
+print "WRONG mod2feb:    120 <-----> 121"
+print "=================================="
+print 
+print  
 
 
 
@@ -97,12 +115,17 @@ print [item for item, count in collections.Counter(mod2feb).items() if count > 1
 
 
 lengthsDict = {}
+mod2febDict = {}
 for i in xrange(0,73):
     lengthsDict[str(mod2feb[i])] = striplength[i]
+    mod2febDict[mod2feb[i]] = i
 
-
+print "=============================================="
 print "THIS LENGHT IS WRONG!!! FEB11 ", striplength[11] 
-print "THIS LENGHT IS WRONG!!! FEB12 ", striplength[12] 
+print "THIS LENGHT IS WRONG!!! FEB12 ", striplength[12]
+print "=============================================="
+print 
+print  
 
 signDict = {}
 for i in plusFEBs:
@@ -211,9 +234,9 @@ with open(fnameGdml, 'r') as f:
             FEB   = mod2feb[int((w[1].split("_"))[1])]
             strip = int((w[1].split("_"))[3])
             uniquekey = 100*FEB+strip 
-            centerPosX = float( w[5]) + 130.
+            centerPosX = float( w[5]) + 128.75
             centerPosY = float( w[7]) 
-            centerPosZ = float( w[9]) + 520.
+            centerPosZ = float( w[9]) + 518.5
 
             center = [centerPosX, centerPosY, centerPosZ]
             dictionaryMCGdmlCenterStrip[uniquekey] = center
@@ -260,15 +283,75 @@ for feb in mod2feb:
 
     if sqSum_invert < sqSum_orig:
         inverted += 1
-        print "INVERTED", feb, inverted
+#        print "INVERTED", feb, "%.1f" % TMath.Sqrt(sqSum_invert), "%.f" % TMath.Sqrt(sqSum_orig) 
         for x in xrange(16):
             key = feb*100 + (15-x)
             dictionaryDifferences[key] = dictionaryDifferences_invert[key] 
+#    else:
+#        print "CORRECT", feb, "%.1f" % TMath.Sqrt(sqSum_invert), "%.f" % TMath.Sqrt(sqSum_orig) 
 
 
+print "==================================="
+print "Number of inverted FEB: ", inverted
+print "==================================="
+print
+
+print "==================================="
+print "Bottom "
+for b in bottom_Modules:
+    print "FEB ", b, ":",
+    feb = int(b)
+    print "corresponding to GDML ", mod2febDict[feb]
+    for x in xrange(16):
+        key         = feb*100+x
+        value = dictionaryDifferences[key]
+        print "%.1f" % value[0],"%.1f" % value[1],"%.1f" % value[2]
+    print        
+print 
+
+
+print "Top "
+for b in top_Modules:
+    print "FEB ", b, ":",
+    feb = int(b)
+    print "corresponding to GDML ", mod2febDict[feb]
+    for x in xrange(16):
+        key         = feb*100+x
+        value = dictionaryDifferences[key]
+        print "%.1f" % value[0],"%.1f" % value[1],"%.1f" % value[2]
+    print        
+print 
+
+
+print "FT "
+for b in ft_Modules:
+    print "FEB ", b, ":",
+    feb = int(b)
+    print "corresponding to GDML ", mod2febDict[feb]
+    for x in xrange(16):
+        key         = feb*100+x
+        value = dictionaryDifferences[key]
+        print "%.1f" % value[0],"%.1f" % value[1],"%.1f" % value[2]
+    print        
+print 
+
+print "Pipe"
+for b in pipe_Modules:
+    print "FEB ", b, ":",
+    feb = int(b)
+    print "corresponding to GDML ", mod2febDict[feb]
+    for x in xrange(16):
+        key         = feb*100+x
+        value = dictionaryDifferences[key]
+        print "%.1f" % value[0],"%.1f" % value[1],"%.1f" % value[2]
+    print        
+print 
+
+
+print
 #print 
 #print len(dictionaryMCGdmlCenterStrip)
-pprint.pprint( dictionaryDifferences)   
+#pprint.pprint( dictionaryDifferences)   
 
 
 
