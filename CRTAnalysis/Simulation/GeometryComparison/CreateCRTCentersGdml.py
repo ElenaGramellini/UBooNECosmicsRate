@@ -10,6 +10,8 @@ import itertools
 from itertools import islice
 import collections
 
+
+
 # Put here the general transformation of coordinante
 def gdmlOffSet():
     return 518.5, 0., 128.75
@@ -20,11 +22,12 @@ def next_n_lines(file_opened, N):
 
 ### Create the block of text needed for output
 def blockOfTextTemplate(febNumb, strip, x, y, z, rotationTag):
-    name = "volAuxDet_Module_" + str(febNumb) + "_strip_"+ str(strip)
+    name1 = "volAuxDet_Module_" + str(febNumb) + "_strip_"+ str(strip)
+    name2 = "posAuxDet_Module_" + str(febNumb) + "_strip_"+ str(strip)
 
     line1 = "       <physvol>\n"
-    line2 = "        <volumeref ref=\""  + name + "\"/>\n"
-    line3 = "        <position name=\""  + name + "\" unit=\"cm\" x=\""+str(x)+"\" y=\""+str(y)+"\" z=\""+str(z)+"\"/>\n"
+    line2 = "        <volumeref ref=\""  + name1 + "\"/>\n"
+    line3 = "        <position name=\""  + name2 + "\" unit=\"cm\" x=\""+str(x)+"\" y=\""+str(y)+"\" z=\""+str(z)+"\"/>\n"
     line4 = "        <rotationref ref=\""+ rotationTag + "\"/>\n"
     line5 = "       </physvol>\n"
 
@@ -213,8 +216,12 @@ for m in allMods:
 
 od = collections.OrderedDict(sorted(orderedDictionary.items()))
 
+
+f = open("demofile.txt", "a")
+
+
 for k, v in od.items():
-    print v,
+    f.write(v)
 
 
 
