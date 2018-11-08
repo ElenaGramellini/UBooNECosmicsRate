@@ -9,6 +9,43 @@ import json
 import itertools
 from itertools import islice
 
+### Given the FEB name, tell me the febNumb
+def febNumberConversion( febName = "11"):
+    mod2feb = [ 24,23,22,17,14,18,19,12,11,52,
+                31,29,28,27,26,30,61,59,57,60,
+                58,56,32,38,36,35,34,33,37,45,
+                44,43,42,41,40,39,55,54,53,51,
+                49,47,21,16,50,48,46,20,15,107,
+                106,105,109,108,112,111,195,123,124,125,
+                126,129,115,114,113,116,119,121,127,128,
+                117,120,118]
+
+    mod2febDict = {}
+    for i in xrange(0,73):
+        mod2febDict[mod2feb[i]] = i
+
+    return mod2febDict[int(febName)]
+
+
+
+### Create the block of text needed for output
+def blockOfTextTemplate(febNumb, strip, x, y, z,  typeOfVolume):
+    if typeOfVolume == 0:
+        name1 = "volAuxDet_Module_" + str(febNumb) + "_strip_"+ str(strip)
+        name2 = "posBMod_" + str(febNumb) + "_strip_"+ str(strip)
+    elif typeOfVolume == 1:
+        name1 = "volModule_" + str(febNumb) + "_strip_"+ str(strip)
+        name2 = "posAMod_" + str(febNumb) + "_strip_"+ str(strip)
+    elif typeOfVolume == -1:
+        name1 = "volModule_" + str(febNumb) + "_strip_"+ str(strip)
+        name2 = "posCMod_" + str(febNumb) + "_strip_"+ str(strip)
+
+    line1 = "       <physvol>\n"
+    line2 = "        <volumeref ref=\""  + name1 + "\"/>\n"
+    line3 = "        <position name=\""  + name2 + "\" unit=\"cm\" x=\""+str(x)+"\" y=\""+str(y)+"\" z=\""+str(z)+"\"/>\n"
+    line4 = "       </physvol>\n"
+
+    return line1+line2+line3+line4
 
 
 def next_n_lines(file_opened, N):
@@ -78,7 +115,7 @@ print "WRONG mod2feb:    125 <-----> 126"
 print "WRONG mod2feb:    120 <-----> 121"
 print "=================================="
 print 
-print  
+print  febNumberConversion("117")
 
 
 
@@ -222,10 +259,11 @@ with open(fnameTxT, 'r') as sample:
 
 
 
-#fnameGdml = "gdml_CRT_B_bars_volumePlacement_file.gdml"
-fnameGdml = "scintillationPosition.txt"
-#fnameGdml = "gdml/CRTTxt/p1.txt"
-dictionaryMCGdmlCenterStrip = {}
+#fnameGdml = "playground.gdml"
+fnameGdml = "test.gdml"
+dictionaryMCGdmlCenterStripA = {}
+dictionaryMCGdmlCenterStripB = {}
+dictionaryMCGdmlCenterStripC = {}
 
 with open(fnameGdml, 'r') as f:
     for line in f.readlines():
@@ -233,15 +271,23 @@ with open(fnameGdml, 'r') as f:
             continue
         else:
             w  = line.split("\"")
-            FEB   = mod2feb[int((w[1].split("_"))[2])]
-            strip = int((w[1].split("_"))[4])
+            FEB   = mod2feb[int((w[1].split("_"))[1])]
+            strip = int((w[1].split("_"))[3])
+            #if ((w[1].split("_"))[1] == "29" ):
+            #    print line
             uniquekey = 100*FEB+strip 
             centerPosX = float( w[5]) + 128.75
             centerPosY = float( w[7]) 
             centerPosZ = float( w[9]) + 518.5
 
             center = [centerPosX, centerPosY, centerPosZ]
-            dictionaryMCGdmlCenterStrip[uniquekey] = center
+
+            if "posAMod" in line:
+                dictionaryMCGdmlCenterStripA[uniquekey] = center
+            if "posBMod" in line:
+                dictionaryMCGdmlCenterStripB[uniquekey] = center
+            if "posCMod" in line:
+                dictionaryMCGdmlCenterStripC[uniquekey] = center
 
             if str(FEB) in bottom_Modules:
                 hSimBottom.Fill(centerPosZ,centerPosX)
@@ -266,9 +312,9 @@ for feb in mod2feb:
     for x in xrange(16):
         key         = feb*100+x
         invertedkey = feb*100 + (15-x)
-        dataPosition      = dictionaryDataTxtCenterStrip[key]
-        simPosition_orig    = dictionaryMCGdmlCenterStrip[key]
-        simPosition_invert  = dictionaryMCGdmlCenterStrip[invertedkey]
+        dataPosition        = dictionaryDataTxtCenterStrip[key]
+        simPosition_orig    = dictionaryMCGdmlCenterStripB[key]
+        simPosition_invert  = dictionaryMCGdmlCenterStripB[invertedkey]
 
         diff_orig    = [dataPosition[0] - simPosition_orig[0]  , dataPosition[1] - simPosition_orig[1]  , dataPosition[2] - simPosition_orig[2] ]
         diff_invert  = [dataPosition[0] - simPosition_invert[0], dataPosition[1] - simPosition_invert[1], dataPosition[2] - simPosition_invert[2] ]
@@ -276,21 +322,69 @@ for feb in mod2feb:
         sqSum_orig   += ( diff_orig[0]*diff_orig[0]  + diff_orig[1]*diff_orig[1] + diff_orig[2]*diff_orig[2] )
         sqSum_invert += ( diff_invert[0]*diff_invert[0]  + diff_invert[1]*diff_invert[1] + diff_invert[2]*diff_invert[2] )
 
-        dictionaryDifferences[key]   = diff_orig
+        dictionaryDifferences[key]        = diff_orig
         dictionaryDifferences_orig[key]   = diff_orig
         dictionaryDifferences_invert[key] = diff_invert
 
-#        if str(feb) == wantedFEB:
-#            print key, "%.2f" % diff[0] , "%.2f" % diff[1] , "%.2f" % diff[2]
-
+        # Who cares if the original mapping is wrong, I'm going to correct for the original difference 
     if sqSum_invert < sqSum_orig:
         inverted += 1
 #        print "INVERTED", feb, "%.1f" % TMath.Sqrt(sqSum_invert), "%.f" % TMath.Sqrt(sqSum_orig) 
         for x in xrange(16):
             key = feb*100 + (15-x)
             dictionaryDifferences[key] = dictionaryDifferences_invert[key] 
-#    else:
-#        print "CORRECT", feb, "%.1f" % TMath.Sqrt(sqSum_invert), "%.f" % TMath.Sqrt(sqSum_orig) 
+
+
+dicCorrectedCenterStripA = {}
+dicCorrectedCenterStripB = {}
+dicCorrectedCenterStripC = {}
+
+print len(dictionaryMCGdmlCenterStripA), len(dictionaryMCGdmlCenterStripB), len(dictionaryMCGdmlCenterStripC)
+
+for feb in mod2feb:
+    for x in xrange(16):
+        key = feb*100 + x
+
+        original_CenterGdmlA = dictionaryMCGdmlCenterStripA[key]
+        original_CenterGdmlB = dictionaryMCGdmlCenterStripB[key]
+        original_CenterGdmlC = dictionaryMCGdmlCenterStripC[key]
+
+        difference = dictionaryDifferences_orig[key]
+
+
+        centerA = [original_CenterGdmlA[0] + difference[0] - 128.8 , original_CenterGdmlA[1] + difference[1], original_CenterGdmlA[2] + difference[2] - 518.5]
+        centerB = [original_CenterGdmlB[0] + difference[0] - 128.8 , original_CenterGdmlB[1] + difference[1], original_CenterGdmlB[2] + difference[2] - 518.5]
+        centerC = [original_CenterGdmlC[0] + difference[0] - 128.8 , original_CenterGdmlC[1] + difference[1], original_CenterGdmlC[2] + difference[2] - 518.5]
+
+
+#        print key
+        dicCorrectedCenterStripA [key] = centerA  
+        dicCorrectedCenterStripB [key] = centerB  
+        dicCorrectedCenterStripC [key] = centerC  
+
+
+alP = open("newHardCodedGeo.txt", "a")  
+for feb in mod2feb:
+    for x in xrange(16):
+        key = feb*100 + x
+        center = dicCorrectedCenterStripA [key] 
+        line = blockOfTextTemplate(febNumberConversion(str(feb)), x, center[0], center[1], center[2],  1)
+        alP.write(line)
+
+for feb in mod2feb:
+    for x in xrange(16):
+        key = feb*100 + x
+        center = dicCorrectedCenterStripB [key] 
+        line = blockOfTextTemplate(febNumberConversion(str(feb)), x, center[0], center[1], center[2],  0)
+        alP.write(line)
+
+for feb in mod2feb:
+    for x in xrange(16):
+        key = feb*100 + x
+        center = dicCorrectedCenterStripC [key] 
+        line = blockOfTextTemplate(febNumberConversion(str(feb)), x, center[0], center[1], center[2],  -1)
+        alP.write(line)
+
 
 
 print "==================================="

@@ -14,21 +14,28 @@ import collections
 
 # Put here the general transformation of coordinante
 def gdmlOffSet():
-    return 518.5, 0., 128.75
+    return 128.75 , 0., 518.5
 
 
 def next_n_lines(file_opened, N):
     return [x.strip() for x in islice(file_opened, N)]
 
 ### Create the block of text needed for output
-def blockOfTextTemplate(febNumb, strip, x, y, z, rotationTag):
-    name1 = "volAuxDet_Module_" + str(febNumb) + "_strip_"+ str(strip)
-    name2 = "posAuxDet_Module_" + str(febNumb) + "_strip_"+ str(strip)
+def blockOfTextTemplate(febNumb, strip, x, y, z, rotationTag, typeOfVolume):
+    if typeOfVolume == 0:
+        name1 = "volAuxDet_Module_" + str(febNumb) + "_strip_"+ str(strip)
+        name2 = "posAuxDet_Module_" + str(febNumb) + "_strip_"+ str(strip)
+    elif typeOfVolume == 1:
+        name1 = "volModule_" + str(febNumb) + "_strip_"+ str(strip)+"_10"
+        name2 = "posModule_" + str(febNumb) + "_strip_"+ str(strip)+"_10"
+    elif typeOfVolume == -1:
+        name1 = "volModule_" + str(febNumb) + "_strip_"+ str(strip)+"_01"
+        name2 = "posModule_" + str(febNumb) + "_strip_"+ str(strip)+"_01"
 
     line1 = "       <physvol>\n"
     line2 = "        <volumeref ref=\""  + name1 + "\"/>\n"
-    line3 = "        <position name=\""  + name2 + "\" unit=\"cm\" x=\""+str(x)+"\" y=\""+str(y)+"\" z=\""+str(z)+"\"/>\n"
-    line4 = "        <rotationref ref=\""+ rotationTag + "\"/>\n"
+    line3 = "        <rotationref ref=\""+ rotationTag + "\"/>\n"
+    line4 = "        <position name=\""  + name2 + "\" unit=\"cm\" x=\""+str(x)+"\" y=\""+str(y)+"\" z=\""+str(z)+"\"/>\n"
     line5 = "       </physvol>\n"
 
     return line1+line2+line3+line4+line5
@@ -91,7 +98,7 @@ def findRotationTag(febNumb = 1):
 
 
 # prepare outgoin block of text
-def prepareBlock(febkey = "1100", centers=[0,0,0]):
+def prepareBlock(febkey = "1100", centers=[0,0,0], typeOfVolume = 0):
     febName     = febkey[:-2]
     febNumb     = febNumberConversion(febName)
     strip       = str(int(febkey[-2:]))
@@ -102,7 +109,7 @@ def prepareBlock(febkey = "1100", centers=[0,0,0]):
     z           = centers[2] - offSet[2]
     rotationTag = findRotationTag(febNumb) 
 
-    return  blockOfTextTemplate(febNumb, strip, x, y, z, rotationTag), febNumb
+    return  blockOfTextTemplate(febNumb, strip, x, y, z, rotationTag, typeOfVolume), febNumb
 
 
 
@@ -189,6 +196,44 @@ def calculateTxtCenters():
     return dictionaryDataTxtCenterStrip
 
 
+#main
+def makeStrips():
+    alP = open("defineStripsDimensions.txt", "a")
+
+    fnameGdml = "gdml/CRTTxt/p3.txt"
+    with open(fnameGdml, 'r') as f:
+    
+        name = "\"Module"
+        for line in f.readlines():
+            if  name in line:
+                words     = line.split("\"")
+                AlTop = words[0]+"\""+words[1]+"\""+words[2]+"\""+words[3]+"_10\""+words[4]+"\""+words[5]+"\""+words[6]+"\""+words[7]+"\""+words[8]+"\""+words[9]+"\""+words[10]
+                AlBot = words[0]+"\""+words[1]+"\""+words[2]+"\""+words[3]+"_01\""+words[4]+"\""+words[5]+"\""+words[6]+"\""+words[7]+"\""+words[8]+"\""+words[9]+"\""+words[10]
+
+                alP.write(AlTop)
+                alP.write(AlBot)
+
+            else:
+                alP.write(line)
+
+
+#main
+def makeStripsMaterial():
+    alP = open("defineAlMaterial.txt", "a")
+    tag_v = ["10","01"]
+
+    for feb in xrange(73):
+        for x in xrange(16):
+            for tag in tag_v:
+                line1 = "      <volume name=\"volModule_"+ str(feb) +"_strip_"+ str(x) +"_"+ tag + "\">\n"
+                line2 = "       <materialref ref=\"ALUMINUM_Al\"/>\n"
+                line3 = "       <solidref ref=\"Module_"+ str(feb) +"_strip_"+ str(x) +"_"+ tag +"\"/>\n"
+                line5 = "      </volume>\n"
+                thisline = line1+line2+line3+line5
+                alP.write(thisline)
+
+
+
 
 # main
 
@@ -205,194 +250,46 @@ allMods = top_Modules+bottom_Modules+ft_Modules+pipe_Modules
 
 # This dictionary contains all the centers calculated from the txt file used in data
 txtDataCenters    = calculateTxtCenters()
-orderedDictionary = {}
+scintDictionary = {}
+topAlDictionary = {}
+bottomAlDictionary = {}
 for m in allMods:
     for x in xrange(16):
-        key         = int(m)*100+x
-        centers     = txtDataCenters[key]
-        thisBlockOfText = prepareBlock(str(key), centers)
-        blockOrder = thisBlockOfText[1]*100 + x 
-        orderedDictionary[ blockOrder ] = thisBlockOfText[0]
+        key           = int(m)*100+x
+        centers       = txtDataCenters[key]
+        centersTop    = centers
+        centersBottom = centers
 
-od = collections.OrderedDict(sorted(orderedDictionary.items()))
+        centersTop[2]    = centersTop[2]+1.1
+        centersBottom[2] = centersBottom[2]-1.1
+
+        scintBlockOfText  = prepareBlock(str(key), centers      , 0)
+        topBlockOfText    = prepareBlock(str(key), centersTop   , 1)
+        bottomBlockOfText = prepareBlock(str(key), centersBottom,-1)
 
 
-f = open("demofile.txt", "a")
+        blockOrder = scintBlockOfText[1]*100 + x 
+        scintDictionary   [ blockOrder ] = scintBlockOfText[0]
+        topAlDictionary   [ blockOrder ] = topBlockOfText[0]
+        bottomAlDictionary[ blockOrder ] = bottomBlockOfText[0]
 
 
-for k, v in od.items():
+scintDictOd  = collections.OrderedDict(sorted(scintDictionary.items()))
+topDictOd    = collections.OrderedDict(sorted(topAlDictionary.items()))
+bottomDictOd = collections.OrderedDict(sorted(bottomAlDictionary.items()))
+
+
+f = open("scintillationPosition.txt", "a")
+for k, v in scintDictOd.items():
     f.write(v)
 
 
+alP = open("alluminumPosition.txt", "a")
+for k, v in topDictOd.items():
+    alP.write(v)
+for k, v in bottomDictOd.items():
+    alP.write(v)
 
 
-
-
-'''
-
-
-hTop      = TH2D("hTop"      , "hTop;    Z; X" ,  125, -300., 1300, 125, -300., 500.)
-hBottom   = TH2D("hBottom"   , "hBottom; Z; X" ,  125, -300., 1300, 125, -300., 500.)
-hRedCheck = TH2D("hRedCheck" , "hBottom; Z; X" ,  125, -300., 1300, 125, -300., 500.)
-hPipe     = TH2D("hPipe"     , "hPipe;   Z; Y" ,  125, -300., 1300, 125, -300., 300.)
-hFT       = TH2D("hFT"       , "hFT;     Z; Y" ,  125, -300., 1300, 125, -300., 300.)
-
-
-hSimTop      = TH2D("hSimTop"      , "hSimTop;    Z; X" ,  125, -300., 1300, 125, -300., 500.)
-hSimBottom   = TH2D("hSimBottom"   , "hSimBottom; Z; X" ,  125, -300., 1300, 125, -300., 500.)
-hSimPipe     = TH2D("hSimPipe"     , "hSimPipe;   Z; Y" ,  125, -300., 1300, 125, -300., 300.)
-hSimFT       = TH2D("hSimFT"       , "hSimFT;     Z; Y" ,  125, -300., 1300, 125, -300., 300.)
-
-
-
-inverted = 0
-dictionaryDifferences        = {}
-dictionaryDifferences_orig   = {}
-dictionaryDifferences_invert = {}
-for feb in mod2feb:
-    sqSum_orig   = 0
-    sqSum_invert = 0
-
-    for x in xrange(16):
-        key         = feb*100+x
-        invertedkey = feb*100 + (15-x)
-        dataPosition      = dictionaryDataTxtCenterStrip[key]
-        simPosition_orig    = dictionaryMCGdmlCenterStrip[key]
-        simPosition_invert  = dictionaryMCGdmlCenterStrip[invertedkey]
-
-        diff_orig    = [dataPosition[0] - simPosition_orig[0]  , dataPosition[1] - simPosition_orig[1]  , dataPosition[2] - simPosition_orig[2] ]
-        diff_invert  = [dataPosition[0] - simPosition_invert[0], dataPosition[1] - simPosition_invert[1], dataPosition[2] - simPosition_invert[2] ]
-
-        sqSum_orig   += ( diff_orig[0]*diff_orig[0]  + diff_orig[1]*diff_orig[1] + diff_orig[2]*diff_orig[2] )
-        sqSum_invert += ( diff_invert[0]*diff_invert[0]  + diff_invert[1]*diff_invert[1] + diff_invert[2]*diff_invert[2] )
-
-        dictionaryDifferences[key]   = diff_orig
-        dictionaryDifferences_orig[key]   = diff_orig
-        dictionaryDifferences_invert[key] = diff_invert
-
-#        if str(feb) == wantedFEB:
-#            print key, "%.2f" % diff[0] , "%.2f" % diff[1] , "%.2f" % diff[2]
-
-    if sqSum_invert < sqSum_orig:
-        inverted += 1
-#        print "INVERTED", feb, "%.1f" % TMath.Sqrt(sqSum_invert), "%.f" % TMath.Sqrt(sqSum_orig) 
-        for x in xrange(16):
-            key = feb*100 + (15-x)
-            dictionaryDifferences[key] = dictionaryDifferences_invert[key] 
-#    else:
-#        print "CORRECT", feb, "%.1f" % TMath.Sqrt(sqSum_invert), "%.f" % TMath.Sqrt(sqSum_orig) 
-
-
-print "==================================="
-print "Number of inverted FEB: ", inverted
-print "==================================="
-print
-
-print "==================================="
-print "Bottom "
-for b in bottom_Modules:
-    print "FEB ", b, ":",
-    feb = int(b)
-    print "corresponding to GDML ", mod2febDict[feb]
-    for x in xrange(16):
-        key         = feb*100+x
-        value = dictionaryDifferences[key]
-        print "%.1f" % value[0],"%.1f" % value[1],"%.1f" % value[2]
-    print        
-print 
-
-
-print "Top "
-for b in top_Modules:
-    print "FEB ", b, ":",
-    feb = int(b)
-    print "corresponding to GDML ", mod2febDict[feb]
-    for x in xrange(16):
-        key         = feb*100+x
-        value = dictionaryDifferences[key]
-        print "%.1f" % value[0],"%.1f" % value[1],"%.1f" % value[2]
-    print        
-print 
-
-
-print "FT "
-for b in ft_Modules:
-    print "FEB ", b, ":",
-    feb = int(b)
-    print "corresponding to GDML ", mod2febDict[feb]
-    for x in xrange(16):
-        key         = feb*100+x
-        value = dictionaryDifferences[key]
-        print "%.1f" % value[0],"%.1f" % value[1],"%.1f" % value[2]
-    print        
-print 
-
-print "Pipe"
-for b in pipe_Modules:
-    print "FEB ", b, ":",
-    feb = int(b)
-    print "corresponding to GDML ", mod2febDict[feb]
-    for x in xrange(16):
-        key         = feb*100+x
-        value = dictionaryDifferences[key]
-        print "%.1f" % value[0],"%.1f" % value[1],"%.1f" % value[2]
-    print        
-print 
-
-
-print
-#print 
-#print len(dictionaryMCGdmlCenterStrip)
-#pprint.pprint( dictionaryDifferences)   
-
-
-
-hRedCheck.SetMarkerStyle(20)
-hRedCheck.SetMarkerSize(2)
-hRedCheck.SetMarkerColor(kRed)
-
-hBottom.SetMarkerStyle(20)
-hTop.SetMarkerStyle(20)
-hPipe.SetMarkerStyle(20)
-hFT.SetMarkerStyle(20)
-hBottom.SetMarkerSize(1)
-hTop.SetMarkerSize(1)
-hPipe.SetMarkerSize(1)
-hFT.SetMarkerSize(1)
-
-
-hSimBottom.SetMarkerStyle(21)
-hSimTop.SetMarkerStyle(21)
-hSimPipe.SetMarkerStyle(21)
-hSimFT.SetMarkerStyle(21)
-hSimBottom.SetMarkerSize(1)
-hSimTop.SetMarkerSize(1)
-hSimPipe.SetMarkerSize(1)
-hSimFT.SetMarkerSize(1)
-hSimBottom.SetMarkerColor(kRed)
-hSimTop.SetMarkerColor(kRed)
-hSimPipe.SetMarkerColor(kRed)
-hSimFT.SetMarkerColor(kRed)
-
-
-fOut = TFile("CenterOut.root","recreate")
-fOut.cd()
-fOut.Add(hBottom)
-fOut.Add(hRedCheck)
-fOut.Add(hTop)
-fOut.Add(hPipe)
-fOut.Add(hFT)
-
-fOut.Add(hSimBottom)
-fOut.Add(hSimTop)
-fOut.Add(hSimPipe)
-fOut.Add(hSimFT)
-
-fOut.Write()
-fOut.Close()
-
-
-
-raw_input()  
-
-'''
+makeStrips()
+makeStripsMaterial()
